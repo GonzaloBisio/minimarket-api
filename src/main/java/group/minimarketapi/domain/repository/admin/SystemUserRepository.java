@@ -1,0 +1,15 @@
+package group.minimarketapi.domain.repository.admin;
+
+import group.minimarketapi.domain.model.admin.SystemUser;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface SystemUserRepository extends JpaRepository<SystemUser, Long> {
+    Optional<SystemUser> findById(Long id);
+    Optional<SystemUser> findByUsername(String username);
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+}

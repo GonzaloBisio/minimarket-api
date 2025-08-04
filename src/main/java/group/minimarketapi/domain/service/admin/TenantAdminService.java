@@ -1,0 +1,107 @@
+package group.minimarketapi.domain.service.admin;
+
+import group.minimarketapi.application.dto.admin.TenantCreationRequestDTO;
+import group.minimarketapi.application.exception.DuplicateFieldException;
+import group.minimarketapi.domain.model.admin.SystemUser;
+import group.minimarketapi.domain.model.admin.Tenant;
+import group.minimarketapi.domain.model.enums.IndustryType;
+import group.minimarketapi.domain.model.enums.SystemRole;
+import group.minimarketapi.domain.repository.admin.SystemUserRepository;
+import group.minimarketapi.domain.repository.admin.TenantRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class TenantAdminService {
+
+    private final TenantRepository tenantRepository;
+    private final SystemUserRepository systemUserRepository;
+    private final FlywayTenantMigrationService flywayTenantMigrationService;
+    private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    public TenantAdminService(TenantRepository tenantRepository,
+                              SystemUserRepository systemUserRepository,
+                              FlywayTenantMigrationService flywayTenantMigrationService,
+                              PasswordEncoder passwordEncoder,
+                              JdbcTemplate jdbcTemplate) {
+        this.tenantRepository = tenantRepository;
+        this.systemUserRepository = systemUserRepository;
+        this.flywayTenantMigrationService = flywayTenantMigrationService;
+        this.passwordEncoder = passwordEncoder;
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Transactional
+    public Tenant createTenantMetadata(TenantCreationRequestDTO requestDTO) {
+        // --- Lógica existente sin cambios ---
+        String schemaName = "tenant_" + requestDTO.getSchemaIdentifier();
+        if (tenantRepository.existsBySchemaName(schemaName)) {
+            throw new DuplicateFieldException("Schema Name", schemaName);
+        }
+        if (systemUserRepository.existsByUsername(requestDTO.getAdminUsername())) {
+            throw new DuplicateFieldException("Admin Username", requestDTO.getAdminUsername());
+        }
+        if (tenantRepository.existsByCompanyName(requestDTO.getCompanyName())) {
+            throw new DuplicateFieldException("Company Name", requestDTO.getCompanyName());
+        }
+        // --- VALIDACIÓN AÑADIDA ---
+        if (systemUserRepository.existsByEmail(requestDTO.getAdminEmail())) {
+            throw new DuplicateFieldException("Admin Email", requestDTO.getAdminEmail());
+        }
+
+        Tenant newTenant = new Tenant();
+        newTenant.setCompanyName(requestDTO.getCompanyName());
+        newTenant.setSchemaName(schemaName);
+        newTenant.setIndustryType(IndustryType.KIOSK); // <-- ¡CAMBIO CLAVE! Asignamos KIOSK por defecto.
+        Tenant savedTenant = tenantRepository.save(newTenant);
+
+        SystemUser tenantAdmin = new SystemUser();
+        tenantAdmin.setUsername(requestDTO.getAdminUsername());
+        tenantAdmin.setPassword(passwordEncoder.encode(requestDTO.getAdminPassword()));
+        tenantAdmin.setEmail(requestDTO.getAdminEmail());
+        tenantAdmin.setName(requestDTO.getAdminName());
+        tenantAdmin.setLastName(requestDTO.getAdminLastName());
+        tenantAdmin.setSystemRole(SystemRole.TENANT_ADMIN);
+        tenantAdmin.setActivo(true);
+        tenantAdmin.setTenant(savedTenant);
+        systemUserRepository.save(tenantAdmin);
+
+        return savedTenant;
+    }
+
+    // --- MÉTODO MODIFICADO ---
+    public void provisionTenantInfrastructure(Tenant tenant) {
+        String schemaName = tenant.getSchemaName();
+        if (schemaName == null || schemaName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Schema name for provisioning cannot be null or empty.");
+        }
+
+        jdbcTemplate.execute("CREATE SCHEMA IF NOT EXISTS \"" + schemaName + "\"");
+
+        // Lógica para decidir qué scripts ejecutar
+        List<String> migrationLocations = new ArrayList<>();
+        migrationLocations.add("classpath:db/migration/tenant/common"); // Siempre las tablas comunes
+
+        switch (tenant.getIndustryType()) {
+            case FOOD_AND_BEVERAGE:
+                migrationLocations.add("classpath:db/migration/tenant/food_and_beverage");
+                break;
+            case DISTRIBUTION:
+                migrationLocations.add("classpath:db/migration/tenant/distribution");
+                break;
+            case KIOSK:
+                migrationLocations.add("classpath:db/migration/tenant/kiosk");
+                break;
+        }
+
+        // Ejecutar Flyway con las carpetas seleccionadas
+        flywayTenantMigrationService.migrateTenantSchema(schemaName, migrationLocations.toArray(new String[0]));
+    }
+}
