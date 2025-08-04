@@ -1,6 +1,6 @@
 package group.minimarketapi.application.exception;
 
-import com.one.core.application.dto.error.ErrorResponseDTO;
+import group.minimarketapi.application.dto.error.ErrorResponseDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

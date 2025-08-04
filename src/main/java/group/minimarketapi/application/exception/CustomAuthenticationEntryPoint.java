@@ -2,7 +2,7 @@ package group.minimarketapi.application.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.one.core.application.dto.error.ErrorResponseDTO;
+import group.minimarketapi.application.dto.error.ErrorResponseDTO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

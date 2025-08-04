@@ -8,6 +8,8 @@ spring:
   # Database configuration
   datasource:
     url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -22,11 +24,12 @@ spring:
     hibernate:
       ddl-auto: none
       multi_tenancy: SCHEMA
-      multi_tenant_connection_provider: com.one.core.config.multitenancy.SchemaMultiTenantConnectionProvider
-      tenant_identifier_resolver: com.one.core.config.multitenancy.JwtTenantIdentifierResolver
+      # CORRECCI√ìN: Rutas de paquete ajustadas a tu proyecto
+      multi_tenant_connection_provider: group.minimarketapi.config.multitenancy.SchemaMultiTenantConnectionProvider
+      tenant_identifier_resolver: group.minimarketapi.config.multitenancy.JwtTenantIdentifierResolver
     show-sql: true
 
-
+  # Flyway
   flyway:
     enabled: true
     locations: classpath:db/migration/public # Solo para el schema public
@@ -48,16 +51,14 @@ jwt:
 # Logging
 logging:
   level:
-    # Nivel por defecto para toda la aplicaciÛn y librerÌas externas.
+    # CORRECCI√ìN: Caracteres especiales arreglados
+    # Nivel por defecto para toda la aplicaci√≥n y librer√≠as externas.
     root: INFO
-
-    # Nivel especÌfico para nuestro propio cÛdigo, para ver flujos.
-    com.one.core: DEBUG
-
+    # Nivel espec√≠fico para nuestro propio c√≥digo, para ver flujos.
+    group: DEBUG
     # Muestra las sentencias SQL que Hibernate genera.
     org.hibernate.SQL: DEBUG
-
-    # MUESTRA LOS VALORES DE LOS PAR¡METROS - °ESTA ES LA LÕNEA M¡S IMPORTANTE!
+    # MUESTRA LOS VALORES DE LOS PAR√ÅMETROS - ¬°ESTA ES LA L√çNEA M√ÅS IMPORTANTE!
     org.hibernate.orm.jdbc.bind: TRACE
 
 # Spring Boot Actuator Configuration
@@ -66,7 +67,6 @@ management:
     web:
       exposure:
         include: health
-
   endpoint:
     health:
       show-details: when_authorized
